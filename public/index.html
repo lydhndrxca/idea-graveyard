@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SHAWNDERMIND</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%2300ff66'%3E%E2%96%A0%3C/text%3E%3C/svg%3E">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+</head>
+<body>
+    <div class="crt">
+        <div class="scanlines" aria-hidden="true"></div>
+        <div class="terminal" id="terminal">
+
+            <header class="boot">
+                <pre class="ascii-logo">
+ ███████ ██   ██  █████  ██     ██ ███    ██ ██████  ███████ ██████  ███    ███ ██ ███    ██ ██████
+ ██      ██   ██ ██   ██ ██     ██ ████   ██ ██   ██ ██      ██   ██ ████  ████ ██ ████   ██ ██   ██
+ ███████ ███████ ███████ ██  █  ██ ██ ██  ██ ██   ██ █████   ██████  ██ ████ ██ ██ ██ ██  ██ ██   ██
+      ██ ██   ██ ██   ██ ██ ███ ██ ██  ██ ██ ██   ██ ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██
+ ███████ ██   ██ ██   ██  ███ ███  ██   ████ ██████  ███████ ██   ██ ██      ██ ██ ██   ████ ██████
+                </pre>
+                <div class="boot-line">SHAWNDERMIND v1.0  ::  IDEA AMPLIFIER  ::  READY</div>
+            </header>
+
+            <!-- INPUT VIEW -->
+            <section id="inputView" class="view view-active">
+                <div class="prompt-line">
+                    <span class="prompt-glyph">C:\IDEA&gt;</span> <span class="prompt-label">enter your seed idea</span><span class="cursor">_</span>
+                </div>
+
+                <div class="field">
+                    <textarea id="seedInput"
+                              placeholder="What's the idea? Describe it. The more, the better — or just a fragment is fine."
+                              rows="6"
+                              autocomplete="off"
+                              autocapitalize="sentences"
+                              spellcheck="true"></textarea>
+                </div>
+
+                <div class="row attach-row">
+                    <label class="btn btn-ghost" for="attachInput">
+                        <span class="btn-glyph">[+]</span> ATTACH FILES
+                    </label>
+                    <input type="file" id="attachInput" multiple
+                           accept="image/*,.pdf,audio/*,.txt,.md,.csv,.json"
+                           hidden>
+                    <button class="btn btn-ghost" id="voiceBtn" type="button" title="Hold to dictate">
+                        <span class="btn-glyph" id="voiceGlyph">[MIC]</span> <span id="voiceLabel">VOICE</span>
+                    </button>
+                </div>
+
+                <ul id="attachList" class="attach-list" aria-live="polite"></ul>
+
+                <div class="row mode-row">
+                    <span class="mode-label">MODE:</span>
+                    <label class="mode-pill mode-pill-active">
+                        <input type="radio" name="mode" value="quick" checked>
+                        <span>[ QUICK ]</span>
+                        <small>~5s, 1 call</small>
+                    </label>
+                    <label class="mode-pill">
+                        <input type="radio" name="mode" value="deep">
+                        <span>[ DEEP ]</span>
+                        <small>~30s, 4 calls</small>
+                    </label>
+                </div>
+
+                <div class="row">
+                    <button class="btn btn-primary" id="generateBtn" type="button">
+                        <span class="btn-glyph">&gt;</span> RUN BRAINSTORM
+                    </button>
+                </div>
+
+                <div id="errorBox" class="error-box hidden"></div>
+            </section>
+
+            <!-- LOADING VIEW -->
+            <section id="loadingView" class="view">
+                <div class="loading-block">
+                    <div class="loading-line"><span id="loadingLabel">THINKING</span><span class="loading-dots">...</span></div>
+                    <div class="progress">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <pre class="loading-log" id="loadingLog"></pre>
+                </div>
+            </section>
+
+            <!-- RESULTS VIEW -->
+            <section id="resultsView" class="view">
+                <div class="results-toolbar">
+                    <button class="btn btn-ghost" id="backBtn" type="button">
+                        <span class="btn-glyph">&lt;</span> NEW IDEA
+                    </button>
+                    <span class="results-meta" id="resultsMeta"></span>
+                </div>
+
+                <div id="resultsBody"></div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="/app.js" defer></script>
+</body>
+</html>
