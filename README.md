@@ -1,11 +1,11 @@
-# SHAWNDERMIND
+# The Idea Graveyard
 
 A DOS-flavored idea amplifier. Drop in a seed idea (or attach an image, PDF,
-audio file, or text file) and SHAWNDERMIND brainstorms it into a slate of
+audio file, or text file) and The Idea Graveyard brainstorms it into a slate of
 candidate directions — picks a winner, shows the rest as TLDRs, and lets you
 refine any of them with feedback.
 
-Phosphor green. Scanlines. Blinking cursor. Voice input. Mobile-first.
+Where ideas go to live. Phosphor green. Scanlines. Blinking cursor. Voice input. Mobile-first.
 
 ## Modes
 
@@ -69,7 +69,7 @@ Open http://localhost:5000.
 ## File map
 
 ```
-SHAWNDERMIND/
+idea-graveyard/
 ├── server/
 │   ├── app.py            # Flask app + API routes + static serving
 │   └── brainstorm.py     # OpenAI calls (quick/deep/refine/transcribe/PDF)

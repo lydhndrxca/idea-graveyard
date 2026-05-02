@@ -1,4 +1,4 @@
-"""SHAWNDERMIND Flask app — serves static frontend + brainstorm API."""
+"""The Idea Graveyard Flask app — serves static frontend + brainstorm API."""
 from __future__ import annotations
 
 import os

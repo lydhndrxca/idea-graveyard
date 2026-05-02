@@ -1,4 +1,4 @@
-/* SHAWNDERMIND — frontend logic (vanilla JS, no build step) */
+/* The Idea Graveyard — frontend logic (vanilla JS, no build step) */
 (function () {
     'use strict';
 
@@ -485,11 +485,11 @@
 
     async function shareIdea(idea) {
         const text =
-            'SHAWNDERMIND — ' + (idea.title || '') + '\n\n' +
+            'THE IDEA GRAVEYARD — ' + (idea.title || '') + '\n\n' +
             (idea.tldr || '') + '\n\n' + (idea.full || '');
         if (navigator.share) {
             try {
-                await navigator.share({ title: idea.title || 'SHAWNDERMIND', text: text });
+                await navigator.share({ title: idea.title || 'The Idea Graveyard', text: text });
                 return;
             } catch (_) { /* user canceled */ }
         }

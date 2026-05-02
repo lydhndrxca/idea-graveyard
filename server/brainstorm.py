@@ -1,4 +1,4 @@
-"""SHAWNDERMIND — OpenAI-powered brainstorm engine.
+"""The Idea Graveyard — OpenAI-powered brainstorm engine.
 
 Two modes:
   - quick: one structured-output call -> 6 ideas with TLDR + full + #1 pick
@@ -84,7 +84,7 @@ _REFINE_SCHEMA = {
 
 # ---------- Prompt builders ----------
 
-_SYSTEM_QUICK = """You are SHAWNDERMIND, a fast, sharp brainstorm engine.
+_SYSTEM_QUICK = """You are The Idea Graveyard, a fast, sharp brainstorm engine.
 
 You take a seed idea (and any attached context/images) and produce a tight
 slate of distinct, high-quality candidate directions.
@@ -97,7 +97,7 @@ Rules:
 - Pick exactly ONE winner. Choose the most original + executable, not the safest.
 - Use the user's tone. Be direct. No corporate fluff. No hedging."""
 
-_SYSTEM_DEEP_DIVERGE = """You are SHAWNDERMIND in DEEP mode (Diverge stage).
+_SYSTEM_DEEP_DIVERGE = """You are The Idea Graveyard in DEEP mode (Diverge stage).
 
 Generate 12 wildly different candidate directions for the seed. Push range:
 include weird, contrarian, ambitious, and lateral options. Each candidate
@@ -105,24 +105,24 @@ gets only a title + 1-line hook. No filler.
 
 Output JSON: {"candidates":[{"id","title","hook"}]}"""
 
-_SYSTEM_DEEP_CRITIQUE = """You are SHAWNDERMIND in DEEP mode (Critique stage).
+_SYSTEM_DEEP_CRITIQUE = """You are The Idea Graveyard in DEEP mode (Critique stage).
 
 Score each candidate 0-10 on (originality, executability, fit-to-seed).
 Eliminate the weakest. Return the top 6 with brief reasons.
 
 Output JSON: {"survivors":[{"id","title","hook","score","reason"}]}"""
 
-_SYSTEM_DEEP_EXPAND = """You are SHAWNDERMIND in DEEP mode (Expand stage).
+_SYSTEM_DEEP_EXPAND = """You are The Idea Graveyard in DEEP mode (Expand stage).
 
 For each surviving candidate, write the full version: what it is, why it works,
 first concrete step, biggest risk. 2-4 paragraphs each. Match the user's tone."""
 
-_SYSTEM_DEEP_RANK = """You are SHAWNDERMIND in DEEP mode (Rank stage).
+_SYSTEM_DEEP_RANK = """You are The Idea Graveyard in DEEP mode (Rank stage).
 
 Pick the single winner from the expanded ideas. Pick for originality + executability,
 not safety. Explain in 2-3 sentences why it beats the others."""
 
-_SYSTEM_REFINE_ONE = """You are SHAWNDERMIND refining a single idea.
+_SYSTEM_REFINE_ONE = """You are The Idea Graveyard refining a single idea.
 
 The user is happy with the direction but wants you to revise this specific idea
 based on their feedback. Keep the same id. Output the revised idea only."""
