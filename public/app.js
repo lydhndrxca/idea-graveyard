@@ -156,7 +156,7 @@
         const pctEl = $('loadingPct');
         const signalEl = $('loadingSignal');
 
-        $('loadingMode').textContent = mode === 'deep' ? 'DEEP BRAINSTORM' : 'QUICK BRAINSTORM';
+        $('loadingMode').textContent = mode === 'deep' ? 'DEEP' : 'QUICK';
         stepsEl.innerHTML = '';
         barFill.style.width = '0%';
         pctEl.textContent = '0%';
@@ -164,17 +164,15 @@
         showView('loading');
 
         const steps = mode === 'deep' ? [
-            { text: 'INITIALIZING BRAINSTORM ENGINE',               pct: 5  },
-            { text: 'LOADING NEURAL PATHWAYS',                       pct: 10 },
-            { text: 'STAGE 1/4 — DIVERGING: 12 CANDIDATE DIRECTIONS', pct: 30 },
-            { text: 'STAGE 2/4 — CRITIQUING: SCORING ORIGINALITY',   pct: 50 },
-            { text: 'STAGE 3/4 — EXPANDING: BUILDING OUT SURVIVORS',  pct: 75 },
-            { text: 'STAGE 4/4 — RANKING: SELECTING WINNER',          pct: 92 },
+            { text: 'initializing',                     pct: 5  },
+            { text: 'stage 1/4: diverging (12 dirs)',   pct: 28 },
+            { text: 'stage 2/4: critiquing',            pct: 48 },
+            { text: 'stage 3/4: expanding survivors',   pct: 72 },
+            { text: 'stage 4/4: ranking',               pct: 92 },
         ] : [
-            { text: 'INITIALIZING BRAINSTORM ENGINE',  pct: 8  },
-            { text: 'LOADING NEURAL PATHWAYS',          pct: 18 },
-            { text: 'GENERATING CANDIDATE IDEAS',       pct: 55 },
-            { text: 'SCORING + SELECTING WINNER',       pct: 88 },
+            { text: 'initializing',             pct: 10 },
+            { text: 'generating candidates',    pct: 50 },
+            { text: 'selecting winner',         pct: 88 },
         ];
 
         const totalMs = mode === 'deep' ? 32000 : 7000;
@@ -279,7 +277,7 @@
 
         const done = document.createElement('div');
         done.className = 'step';
-        done.innerHTML = '<span class="step-arrow" style="color:var(--green);text-shadow:0 0 6px var(--green-glow)">\u2714</span> <span class="step-text" style="color:var(--green);text-shadow:0 0 4px var(--green-glow)">BRAINSTORM COMPLETE</span>';
+        done.innerHTML = '<span class="step-arrow">\u2714</span> <span class="step-text">complete</span>';
         stepsEl.appendChild(done);
     }
 
@@ -381,11 +379,11 @@
         const actions = document.createElement('div');
         actions.className = 'idea-actions';
         actions.innerHTML =
-            '<button class="btn btn-ghost btn-enhance" data-act="enhance"><span class="btn-glyph">[+]</span> ENHANCE IDEA</button>' +
-            '<button class="btn btn-ghost" data-act="feedback"><span class="btn-glyph">[~]</span> ADD FEEDBACK</button>' +
-            '<button class="btn btn-ghost" data-act="png"><span class="btn-glyph">[IMG]</span> SAVE PNG</button>' +
-            '<button class="btn btn-ghost" data-act="pdf"><span class="btn-glyph">[PDF]</span> SAVE PDF</button>' +
-            '<button class="btn btn-ghost" data-act="share"><span class="btn-glyph">[&gt;]</span> SHARE</button>';
+            '<button class="btn btn-ghost btn-enhance" data-act="enhance">[+] ENHANCE</button>' +
+            '<button class="btn btn-ghost" data-act="feedback">[~] FEEDBACK</button>' +
+            '<button class="btn btn-ghost" data-act="png">SAVE PNG</button>' +
+            '<button class="btn btn-ghost" data-act="pdf">SAVE PDF</button>' +
+            '<button class="btn btn-ghost" data-act="share">SHARE</button>';
         body.appendChild(actions);
 
         const fb = document.createElement('div');
@@ -393,8 +391,8 @@
         fb.innerHTML =
             '<textarea placeholder="What would you change? More edge, different audience, new constraint..." rows="3"></textarea>' +
             '<div class="feedback-actions">' +
-              '<button class="btn btn-primary" data-act="refine-one"><span class="btn-glyph">\u25b8</span> REFINE THIS ONE</button>' +
-              '<button class="btn" data-act="rebrainstorm"><span class="btn-glyph">\u25b8\u25b8</span> BRAINSTORM AGAIN</button>' +
+              '<button class="btn btn-primary" data-act="refine-one">REFINE THIS ONE</button>' +
+              '<button class="btn" data-act="rebrainstorm">BRAINSTORM AGAIN</button>' +
               '<button class="btn btn-ghost" data-act="cancel-feedback">CANCEL</button>' +
             '</div>' +
             '<div class="idea-status"></div>';
@@ -443,7 +441,7 @@
 
     async function enhanceIdea(card, idea, btn) {
         const origText = btn.innerHTML;
-        btn.innerHTML = '<span class="btn-glyph">[\u2026]</span> ENHANCING\u2026';
+        btn.innerHTML = 'ENHANCING...';
         btn.disabled = true;
         btn.style.opacity = '0.6';
 
@@ -558,7 +556,7 @@
         }
         await withTempExpanded(card, async () => {
             const canvas = await html2canvas(card, {
-                backgroundColor: '#050a18',
+                backgroundColor: '#111d35',
                 scale: 2,
                 useCORS: true,
             });
@@ -573,7 +571,7 @@
             return;
         }
         await withTempExpanded(card, async () => {
-            const canvas = await html2canvas(card, { backgroundColor: '#050a18', scale: 2, useCORS: true });
+            const canvas = await html2canvas(card, { backgroundColor: '#111d35', scale: 2, useCORS: true });
             const img = canvas.toDataURL('image/png');
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'letter' });
