@@ -5,10 +5,10 @@
     const $ = (id) => document.getElementById(id);
 
     const state = {
-        attachments: [],   // {file, name, size, kind}
+        attachments: [],
         seed: '',
         mode: 'quick',
-        result: null,      // {winner_id, rationale, ideas:[{id,title,tldr,full}]}
+        result: null,
         recognition: null,
         recording: false,
     };
@@ -144,54 +144,143 @@
     }
     function clearError() { $('errorBox').classList.add('hidden'); }
 
-    // ---------- Loading view ----------
+    // ---------- Loading: step-by-step animation ----------
 
     let loadingTimer = null;
+    let waveTimer = null;
+    const WAVE_CHARS = '\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588';
+
     function startLoading(mode) {
-        const log = $('loadingLog');
-        const fill = $('progressFill');
-        const label = $('loadingLabel');
-        label.textContent = mode === 'deep' ? 'DEEP BRAINSTORM' : 'BRAINSTORMING';
-        log.textContent = '';
-        fill.style.width = '0%';
+        const stepsEl = $('loadingSteps');
+        const barFill = $('loadingBarFill');
+        const pctEl = $('loadingPct');
+        const signalEl = $('loadingSignal');
+
+        $('loadingMode').textContent = mode === 'deep' ? 'DEEP BRAINSTORM' : 'QUICK BRAINSTORM';
+        stepsEl.innerHTML = '';
+        barFill.style.width = '0%';
+        pctEl.textContent = '0%';
+        signalEl.textContent = '';
         showView('loading');
 
-        const lines = mode === 'deep'
-            ? [
-                '> spinning up cortex...',
-                '> diverging — generating 12 candidates...',
-                '> critiquing — pruning weak directions...',
-                '> expanding — fleshing out survivors...',
-                '> ranking — selecting the winner...',
-            ]
-            : [
-                '> spinning up cortex...',
-                '> diverging — generating candidate ideas...',
-                '> selecting the winner...',
-            ];
+        const steps = mode === 'deep' ? [
+            { text: 'INITIALIZING BRAINSTORM ENGINE',               pct: 5  },
+            { text: 'LOADING NEURAL PATHWAYS',                       pct: 10 },
+            { text: 'STAGE 1/4 — DIVERGING: 12 CANDIDATE DIRECTIONS', pct: 30 },
+            { text: 'STAGE 2/4 — CRITIQUING: SCORING ORIGINALITY',   pct: 50 },
+            { text: 'STAGE 3/4 — EXPANDING: BUILDING OUT SURVIVORS',  pct: 75 },
+            { text: 'STAGE 4/4 — RANKING: SELECTING WINNER',          pct: 92 },
+        ] : [
+            { text: 'INITIALIZING BRAINSTORM ENGINE',  pct: 8  },
+            { text: 'LOADING NEURAL PATHWAYS',          pct: 18 },
+            { text: 'GENERATING CANDIDATE IDEAS',       pct: 55 },
+            { text: 'SCORING + SELECTING WINNER',       pct: 88 },
+        ];
 
-        let i = 0;
-        const total = mode === 'deep' ? 30000 : 6000;
+        const totalMs = mode === 'deep' ? 32000 : 7000;
         const start = performance.now();
+        let currentStep = -1;
+        let waveOffset = 0;
+
+        function addStep(text) {
+            const div = document.createElement('div');
+            div.className = 'step active';
+            div.innerHTML =
+                '<span class="step-arrow">\u25b8</span> ' +
+                '<span class="step-text">' + text + '</span>' +
+                '<span class="step-dots"></span>' +
+                '<span class="step-status"></span>';
+            stepsEl.appendChild(div);
+            stepsEl.scrollTop = stepsEl.scrollHeight;
+            return div;
+        }
+
+        function completeStep(stepEl) {
+            if (!stepEl) return;
+            stepEl.querySelector('.step-dots').textContent = '';
+            const st = stepEl.querySelector('.step-status');
+            st.textContent = ' [OK]';
+            st.classList.add('ok');
+            stepEl.classList.remove('active');
+            stepEl.classList.add('done');
+        }
+
+        function buildWave() {
+            const width = Math.min(60, Math.floor((signalEl.offsetWidth || 400) / 9));
+            let line1 = '', line2 = '';
+            for (let i = 0; i < width; i++) {
+                const v1 = Math.sin((waveOffset + i) * 0.25) * 0.4 +
+                           Math.sin((waveOffset + i) * 0.6) * 0.3 +
+                           Math.cos((waveOffset + i) * 0.15) * 0.2 +
+                           Math.random() * 0.15;
+                const v2 = Math.cos((waveOffset + i) * 0.2) * 0.35 +
+                           Math.sin((waveOffset + i) * 0.45 + 2) * 0.35 +
+                           Math.random() * 0.15;
+                const i1 = Math.floor(Math.max(0, Math.min(7, (v1 + 0.5) * 7)));
+                const i2 = Math.floor(Math.max(0, Math.min(7, (v2 + 0.5) * 7)));
+                line1 += WAVE_CHARS[i1];
+                line2 += WAVE_CHARS[i2];
+            }
+            waveOffset++;
+            signalEl.textContent = 'SIG-A \u2502 ' + line1 + '\nSIG-B \u2502 ' + line2;
+        }
 
         function tick() {
             const elapsed = performance.now() - start;
-            const pct = Math.min(95, (elapsed / total) * 100);
-            fill.style.width = pct + '%';
-            const expectedI = Math.min(lines.length - 1, Math.floor((elapsed / total) * lines.length));
-            while (i <= expectedI && i < lines.length) {
-                log.textContent += lines[i] + '\n';
-                log.scrollTop = log.scrollHeight;
-                i++;
+            const progress = Math.min(0.95, elapsed / totalMs);
+            const pctVal = Math.round(progress * 100);
+
+            barFill.style.width = pctVal + '%';
+            pctEl.textContent = pctVal + '%';
+
+            const expectedStep = steps.findIndex((s) => (s.pct / 100) > progress) - 1;
+            const targetStep = expectedStep < 0 ? steps.length - 1 : expectedStep;
+
+            while (currentStep < targetStep) {
+                if (currentStep >= 0) {
+                    completeStep(stepsEl.children[currentStep]);
+                }
+                currentStep++;
+                addStep(steps[currentStep].text);
             }
+
+            if (currentStep >= 0 && stepsEl.children[currentStep]) {
+                const dotsEl = stepsEl.children[currentStep].querySelector('.step-dots');
+                const dotPhase = Math.floor((elapsed % 1600) / 400);
+                dotsEl.textContent = ' ' + '.'.repeat(dotPhase + 1);
+            }
+
+            buildWave();
         }
+
         tick();
-        loadingTimer = setInterval(tick, 350);
+        loadingTimer = setInterval(tick, 180);
     }
+
     function finishLoading() {
         if (loadingTimer) clearInterval(loadingTimer);
+        if (waveTimer) clearInterval(waveTimer);
         loadingTimer = null;
-        $('progressFill').style.width = '100%';
+        waveTimer = null;
+
+        $('loadingBarFill').style.width = '100%';
+        $('loadingPct').textContent = '100%';
+
+        const stepsEl = $('loadingSteps');
+        const last = stepsEl.lastElementChild;
+        if (last && !last.classList.contains('done')) {
+            last.querySelector('.step-dots').textContent = '';
+            const st = last.querySelector('.step-status');
+            st.textContent = ' [OK]';
+            st.classList.add('ok');
+            last.classList.remove('active');
+            last.classList.add('done');
+        }
+
+        const done = document.createElement('div');
+        done.className = 'step';
+        done.innerHTML = '<span class="step-arrow" style="color:var(--green);text-shadow:0 0 6px var(--green-glow)">\u2714</span> <span class="step-text" style="color:var(--green);text-shadow:0 0 4px var(--green-glow)">BRAINSTORM COMPLETE</span>';
+        stepsEl.appendChild(done);
     }
 
     // ---------- Brainstorm API ----------
@@ -222,27 +311,18 @@
             }
             finishLoading();
             state.result = data;
-            await new Promise((res) => setTimeout(res, 250));
+            await new Promise((res) => setTimeout(res, 600));
             renderResults();
             showView('results');
         } catch (e) {
             finishLoading();
+            await new Promise((res) => setTimeout(res, 300));
             showView('input');
             showError(String(e.message || e));
         }
     }
 
     // ---------- Render results ----------
-
-    function rankNumberFor(idea) {
-        if (!state.result) return '';
-        const idx = state.result.ideas.findIndex((x) => x.id === idea.id);
-        const winnerIdx = state.result.ideas.findIndex((x) => x.id === state.result.winner_id);
-        if (idx === -1) return '';
-        if (idx === winnerIdx) return '#1';
-        let n = idx > winnerIdx ? idx : idx + 1;
-        return '#' + n;
-    }
 
     function renderResults() {
         const body = $('resultsBody');
@@ -253,7 +333,6 @@
         $('resultsMeta').textContent =
             (r.mode || state.mode).toUpperCase() + ' / ' + r.ideas.length + ' IDEAS';
 
-        // Sort: winner first, then others in original order
         const winnerIdx = r.ideas.findIndex((x) => x.id === r.winner_id);
         const ordered = [];
         if (winnerIdx >= 0) ordered.push(r.ideas[winnerIdx]);
@@ -273,12 +352,12 @@
         const head = document.createElement('div');
         head.className = 'idea-card-head';
         head.innerHTML =
-            '<div class="idea-rank">' + (isWinner ? '#1 ★' : '#' + displayRank) + '</div>' +
+            '<div class="idea-rank">' + (isWinner ? '#1 \u2605' : '#' + displayRank) + '</div>' +
             '<div class="idea-head-text">' +
                 '<h2 class="idea-title"></h2>' +
                 '<p class="idea-tldr"></p>' +
             '</div>' +
-            '<div class="idea-toggle">▶</div>';
+            '<div class="idea-toggle">\u25b6</div>';
         head.querySelector('.idea-title').textContent = idea.title || '';
         head.querySelector('.idea-tldr').textContent = idea.tldr || '';
         head.addEventListener('click', () => card.classList.toggle('expanded'));
@@ -290,7 +369,7 @@
         if (isWinner && rationale) {
             const rat = document.createElement('div');
             rat.className = 'idea-rationale';
-            rat.textContent = '★ Why this wins: ' + rationale;
+            rat.textContent = '\u2605 Why this wins: ' + rationale;
             body.appendChild(rat);
         }
 
@@ -299,24 +378,23 @@
         full.textContent = idea.full || '';
         body.appendChild(full);
 
-        // Action row
         const actions = document.createElement('div');
         actions.className = 'idea-actions';
         actions.innerHTML =
+            '<button class="btn btn-ghost btn-enhance" data-act="enhance"><span class="btn-glyph">[+]</span> ENHANCE IDEA</button>' +
             '<button class="btn btn-ghost" data-act="feedback"><span class="btn-glyph">[~]</span> ADD FEEDBACK</button>' +
             '<button class="btn btn-ghost" data-act="png"><span class="btn-glyph">[IMG]</span> SAVE PNG</button>' +
             '<button class="btn btn-ghost" data-act="pdf"><span class="btn-glyph">[PDF]</span> SAVE PDF</button>' +
-            '<button class="btn btn-ghost" data-act="share"><span class="btn-glyph">[</span>SHARE]</button>';
+            '<button class="btn btn-ghost" data-act="share"><span class="btn-glyph">[&gt;]</span> SHARE</button>';
         body.appendChild(actions);
 
-        // Feedback panel (hidden until "Add Feedback")
         const fb = document.createElement('div');
         fb.className = 'idea-feedback';
         fb.innerHTML =
             '<textarea placeholder="What would you change? More edge, different audience, new constraint..." rows="3"></textarea>' +
             '<div class="feedback-actions">' +
-              '<button class="btn btn-primary" data-act="refine-one"><span class="btn-glyph">&gt;</span> REFINE THIS ONE</button>' +
-              '<button class="btn" data-act="rebrainstorm"><span class="btn-glyph">&gt;&gt;</span> BRAINSTORM AGAIN</button>' +
+              '<button class="btn btn-primary" data-act="refine-one"><span class="btn-glyph">\u25b8</span> REFINE THIS ONE</button>' +
+              '<button class="btn" data-act="rebrainstorm"><span class="btn-glyph">\u25b8\u25b8</span> BRAINSTORM AGAIN</button>' +
               '<button class="btn btn-ghost" data-act="cancel-feedback">CANCEL</button>' +
             '</div>' +
             '<div class="idea-status"></div>';
@@ -324,12 +402,12 @@
 
         card.appendChild(body);
 
-        // Wire actions
         actions.addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-act]');
             if (!btn) return;
             const act = btn.dataset.act;
-            if (act === 'feedback') { fb.classList.toggle('open'); fb.querySelector('textarea').focus(); }
+            if (act === 'enhance') enhanceIdea(card, idea, btn);
+            else if (act === 'feedback') { fb.classList.toggle('open'); fb.querySelector('textarea').focus(); }
             else if (act === 'png') saveAsPng(card, idea);
             else if (act === 'pdf') saveAsPdf(card, idea);
             else if (act === 'share') shareIdea(idea);
@@ -361,6 +439,59 @@
         return card;
     }
 
+    // ---------- Enhance Idea (one-click) ----------
+
+    async function enhanceIdea(card, idea, btn) {
+        const origText = btn.innerHTML;
+        btn.innerHTML = '<span class="btn-glyph">[\u2026]</span> ENHANCING\u2026';
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+
+        const feedback =
+            'Enhance this idea. Make the hook sharper and more memorable. ' +
+            'Add a specific, concrete first step someone could take today. ' +
+            'Make it more original — push it further from obvious. ' +
+            'Be more honest and specific about the biggest risk. ' +
+            'Keep the core direction but elevate it.';
+
+        try {
+            const r = await fetch('/api/refine', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idea: idea, feedback: feedback, seed: state.seed }),
+            });
+            const data = await r.json();
+            if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
+
+            const idx = state.result.ideas.findIndex((x) => x.id === idea.id);
+            if (idx >= 0) state.result.ideas[idx] = data.idea;
+
+            const isWinner = state.result.winner_id === data.idea.id;
+            const rank = idx >= 0 ? idx + 1 : 1;
+            const fresh = renderIdeaCard(data.idea, isWinner, rank, state.result.rationale);
+            fresh.classList.add('expanded');
+
+            const titleEl = fresh.querySelector('.idea-title');
+            if (titleEl) {
+                const badge = document.createElement('span');
+                badge.className = 'enhanced-badge';
+                badge.textContent = 'ENHANCED';
+                titleEl.appendChild(badge);
+            }
+
+            card.replaceWith(fresh);
+        } catch (e) {
+            btn.innerHTML = origText;
+            btn.disabled = false;
+            btn.style.opacity = '';
+            const status = card.querySelector('.idea-status');
+            if (status) {
+                status.classList.add('error');
+                status.textContent = '! ' + (e.message || e);
+            }
+        }
+    }
+
     // ---------- Refine + re-brainstorm ----------
 
     async function refineSingleIdea(card, idea, feedback, statusEl) {
@@ -374,13 +505,11 @@
             });
             const data = await r.json();
             if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
-            // Replace idea in state.result
             const idx = state.result.ideas.findIndex((x) => x.id === idea.id);
             if (idx >= 0) state.result.ideas[idx] = data.idea;
-            // Re-render this card in place
             const isWinner = state.result.winner_id === data.idea.id;
-            const newRank = rankNumberFor(data.idea);
-            const fresh = renderIdeaCard(data.idea, isWinner, parseInt((newRank || '#1').replace('#', ''), 10), state.result.rationale);
+            const rank = idx >= 0 ? idx + 1 : 1;
+            const fresh = renderIdeaCard(data.idea, isWinner, rank, state.result.rationale);
             fresh.classList.add('expanded');
             card.replaceWith(fresh);
         } catch (e) {
@@ -395,11 +524,10 @@
         const newSeed =
             state.seed +
             '\n\n--- PRIOR DIRECTION ---\n' +
-            (idea.title || '') + ' — ' + (idea.tldr || '') +
+            (idea.title || '') + ' \u2014 ' + (idea.tldr || '') +
             '\n\n--- USER FEEDBACK ON THAT ---\n' + feedback +
             '\n\nIncorporate this feedback into a fresh brainstorm.';
         $('seedInput').value = newSeed;
-        // Run again with same mode
         await runBrainstorm();
     }
 
@@ -408,7 +536,6 @@
     async function withTempExpanded(card, fn) {
         const wasExpanded = card.classList.contains('expanded');
         card.classList.add('expanded');
-        // Hide action buttons + feedback so they don't clutter exports
         const actions = card.querySelector('.idea-actions');
         const fb = card.querySelector('.idea-feedback');
         const oldDisplay = actions ? actions.style.display : '';
@@ -431,7 +558,7 @@
         }
         await withTempExpanded(card, async () => {
             const canvas = await html2canvas(card, {
-                backgroundColor: '#000000',
+                backgroundColor: '#050a18',
                 scale: 2,
                 useCORS: true,
             });
@@ -446,7 +573,7 @@
             return;
         }
         await withTempExpanded(card, async () => {
-            const canvas = await html2canvas(card, { backgroundColor: '#000000', scale: 2, useCORS: true });
+            const canvas = await html2canvas(card, { backgroundColor: '#050a18', scale: 2, useCORS: true });
             const img = canvas.toDataURL('image/png');
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'letter' });
@@ -458,7 +585,6 @@
             if (imgH <= pageH - 40) {
                 pdf.addImage(img, 'PNG', 20, y, imgW, imgH);
             } else {
-                // Multi-page slicing
                 let remainingH = imgH;
                 let sy = 0;
                 const sliceH = pageH - 40;
@@ -485,7 +611,7 @@
 
     async function shareIdea(idea) {
         const text =
-            'THE IDEA GRAVEYARD — ' + (idea.title || '') + '\n\n' +
+            'THE IDEA GRAVEYARD \u2014 ' + (idea.title || '') + '\n\n' +
             (idea.tldr || '') + '\n\n' + (idea.full || '');
         if (navigator.share) {
             try {
@@ -523,7 +649,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         $('attachInput').addEventListener('change', (e) => {
             handleFiles(e.target.files);
-            e.target.value = ''; // allow re-selecting same file
+            e.target.value = '';
         });
         $('generateBtn').addEventListener('click', runBrainstorm);
         $('backBtn').addEventListener('click', () => {
@@ -537,7 +663,6 @@
                 });
             });
         });
-        // Keyboard shortcut: Ctrl/Cmd+Enter to submit
         $('seedInput').addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
