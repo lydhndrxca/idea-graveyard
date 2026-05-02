@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import random
 from typing import Any
 
 from openai import OpenAI
@@ -82,50 +83,119 @@ _REFINE_SCHEMA = {
 }
 
 
+# ---------- Divergence lenses ----------
+# Each brainstorm randomly picks 6 of these to force genuinely different directions.
+
+_LENSES = [
+    "Flip it: what if the opposite of the obvious approach is better?",
+    "Shrink it: what's the tiniest, most focused version that still works?",
+    "10x it: what if budget and scale were unlimited?",
+    "Wrong audience: apply this idea to a totally unexpected group of people.",
+    "Analog it: remove all technology. How does this work with paper, in-person, physical?",
+    "Mashup: combine the seed with an unrelated industry (food, sports, music, fashion, science).",
+    "Time-shift: what if this existed 50 years ago, or 50 years from now?",
+    "Villain lens: what's the dark, cynical, or subversive version?",
+    "Kid-brain: how would an 8-year-old solve this? What's the stupidly simple version?",
+    "Art project: treat it as a creative/artistic expression, not a business or product.",
+    "One-person version: what can a single person build in a weekend?",
+    "Community play: what if 1,000 strangers collaborated on this?",
+    "Monetize differently: make money from the thing everyone ignores.",
+    "Delete the core: remove the most 'obvious' feature. What's left?",
+    "Personal angle: make it deeply autobiographical — only YOU could do this.",
+    "Comedy lens: what's the funny version that still delivers real value?",
+    "Luxury lens: what's the absurdly premium, high-end take?",
+    "Emergency version: you have 48 hours and $100. Go.",
+    "Physical-digital bridge: this idea lives in both the real world and online simultaneously.",
+    "Trojan horse: disguise the real value inside something that looks like something else entirely.",
+    "Seasonal/ephemeral: this only exists for a limited time, then it's gone forever.",
+    "Anti-pattern: do the thing experts say you should never do.",
+    "Sensory shift: what if the primary sense changes (sound-first, touch-first, smell-first)?",
+    "Cultural remix: transplant this idea into a completely different culture or subculture.",
+    "Rage fuel: what version of this would make people argue about it online?",
+]
+
+
+def _pick_lenses(n: int = 6) -> list[str]:
+    return random.sample(_LENSES, min(n, len(_LENSES)))
+
+
+def _lens_block(lenses: list[str]) -> str:
+    lines = [f"{i+1}. {l}" for i, l in enumerate(lenses)]
+    return "CREATIVE LENSES — each idea MUST use a different lens:\n" + "\n".join(lines)
+
+
 # ---------- Prompt builders ----------
 
-_SYSTEM_QUICK = """You are The Idea Graveyard, a fast, sharp brainstorm engine.
-
-You take a seed idea (and any attached context/images) and produce a tight
-slate of distinct, high-quality candidate directions.
+_SYSTEM_QUICK = """You are The Idea Graveyard — a brainstorm engine that generates genuinely different ideas, not 6 flavors of the same thing.
 
 Rules:
-- Generate 6 ideas, each meaningfully different from the others (different angle,
-  audience, mechanic, or domain — not 6 variations of the same thing).
-- Each idea: snappy title, one-sentence TLDR (<=160 chars), and a 2-4 paragraph
-  full breakdown covering: what it is, why it works, first concrete step, biggest risk.
-- Pick exactly ONE winner. Choose the most original + executable, not the safest.
-- Use the user's tone. Be direct. No corporate fluff. No hedging."""
+- Generate 6 ideas. Each one MUST attack the seed from a fundamentally different angle.
+  If two ideas could be merged without losing much, they're too similar — kill one and go weirder.
+- You will receive a set of "creative lenses." Each idea must be clearly inspired by a different lens.
+  Don't label which lens you used — just let it drive the direction.
+- At least 1 idea should make the user uncomfortable (too ambitious, too weird, too honest).
+- At least 1 idea should be laughably simple.
+- Each idea: snappy title (<=8 words), one-sentence TLDR (<=160 chars), and a 2-4 paragraph
+  full breakdown: what it is, why it works, concrete first step, biggest risk.
+- Pick ONE winner: the most original + doable, NOT the safest.
+- Write like a sharp friend, not a consultant. No corporate fluff. No "leveraging synergies."
+- Be specific. Real names, real tools, real numbers. Vague = bad."""
 
 _SYSTEM_DEEP_DIVERGE = """You are The Idea Graveyard in DEEP mode (Diverge stage).
 
-Generate 12 wildly different candidate directions for the seed. Push range:
-include weird, contrarian, ambitious, and lateral options. Each candidate
-gets only a title + 1-line hook. No filler.
+Generate 12 wildly different candidate directions for the seed.
+
+You will receive creative lenses. Use them to force genuine variety — each candidate
+should feel like it came from a different person's brain.
+
+Requirements:
+- At least 2 should be contrarian or uncomfortable.
+- At least 2 should be surprisingly small/simple.
+- At least 2 should be ambitious/weird.
+- NO two candidates should share the same core mechanic or audience.
+- Each gets only a title + 1-line hook. No filler, no hedging.
 
 Output JSON: {"candidates":[{"id","title","hook"}]}"""
 
 _SYSTEM_DEEP_CRITIQUE = """You are The Idea Graveyard in DEEP mode (Critique stage).
 
-Score each candidate 0-10 on (originality, executability, fit-to-seed).
+Score each candidate 0-10 on:
+- Originality (is this surprising? could only THIS person think of it?)
+- Executability (can someone actually start this within a week?)
+- Divergence (how different is it from the OTHER candidates?)
+
+PUNISH sameness. If two candidates are similar, dock BOTH.
 Eliminate the weakest. Return the top 6 with brief reasons.
 
 Output JSON: {"survivors":[{"id","title","hook","score","reason"}]}"""
 
 _SYSTEM_DEEP_EXPAND = """You are The Idea Graveyard in DEEP mode (Expand stage).
 
-For each surviving candidate, write the full version: what it is, why it works,
-first concrete step, biggest risk. 2-4 paragraphs each. Match the user's tone."""
+For each surviving candidate, write the full version:
+- What it is (be specific — names, tools, formats, real details)
+- Why it works (the non-obvious insight)
+- First concrete step (something doable THIS WEEK)
+- Biggest risk (be honest, not hand-wavy)
+
+2-4 paragraphs each. Write like a sharp friend, not a consultant.
+If you catch yourself writing "leveraging" or "fostering" — stop and rewrite that sentence."""
 
 _SYSTEM_DEEP_RANK = """You are The Idea Graveyard in DEEP mode (Rank stage).
 
-Pick the single winner from the expanded ideas. Pick for originality + executability,
-not safety. Explain in 2-3 sentences why it beats the others."""
+Pick the single winner. Criteria:
+1. Would someone actually remember this idea tomorrow? (memorability)
+2. Could someone start on it this week? (executability)
+3. Is it genuinely different from what already exists? (originality)
+
+Do NOT pick the safest idea. Pick the one with the most interesting failure mode.
+Explain in 2-3 sentences why it wins."""
 
 _SYSTEM_REFINE_ONE = """You are The Idea Graveyard refining a single idea.
 
-The user is happy with the direction but wants you to revise this specific idea
-based on their feedback. Keep the same id. Output the revised idea only."""
+The user wants you to revise this idea based on their feedback.
+Push it further — don't just patch, actually improve.
+Be more specific, more honest, more surprising.
+Keep the same id. Output the revised idea only."""
 
 
 # ---------- Helpers ----------
@@ -166,7 +236,7 @@ def _structured_call(
             "type": "json_schema",
             "json_schema": {"name": schema_name, "schema": schema, "strict": True},
         },
-        temperature=0.9,
+        temperature=1.0,
     )
     raw = resp.choices[0].message.content or "{}"
     return json.loads(raw)
@@ -177,7 +247,7 @@ def _free_form_call(
     model: str,
     system: str,
     user_content: list[dict] | str,
-    temperature: float = 0.9,
+    temperature: float = 1.0,
 ) -> str:
     client = _client()
     user_msg = {"role": "user", "content": user_content}
@@ -197,7 +267,12 @@ def brainstorm_quick(
     images: list[dict] | None = None,
 ) -> dict[str, Any]:
     """One-shot brainstorm. ~5 seconds, 1 OpenAI call."""
+    lenses = _pick_lenses(6)
     user_content = _build_user_content(seed, context, images)
+    if isinstance(user_content, list):
+        user_content[0]["text"] += "\n\n" + _lens_block(lenses)
+    else:
+        user_content += "\n\n" + _lens_block(lenses)
     return _structured_call(
         model=_DEFAULT_MODEL,
         system=_SYSTEM_QUICK,
@@ -217,7 +292,12 @@ def brainstorm_deep(
     Stages: diverge (12 candidates) -> critique (top 6) -> expand (full ideas)
     -> rank (pick #1 + rationale). Returns the same shape as quick.
     """
+    lenses = _pick_lenses(12)
     user_content = _build_user_content(seed, context, images)
+    if isinstance(user_content, list):
+        user_content[0]["text"] += "\n\n" + _lens_block(lenses)
+    else:
+        user_content += "\n\n" + _lens_block(lenses)
 
     diverge_schema = {
         "type": "object",
