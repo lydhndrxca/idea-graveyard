@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import os
+import re
 import traceback
+from html.parser import HTMLParser
+from urllib.request import urlopen, Request
+from urllib.error import URLError
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
@@ -86,6 +90,64 @@ def _process_attachments(files) -> tuple[str, list[dict]]:
     return ("\n\n".join(context_parts), images)
 
 
+_URL_RE = re.compile(r'https?://[^\s<>"\')\]]+')
+_MAX_URL_CHARS = 12_000
+
+
+class _TextExtractor(HTMLParser):
+    """Strips HTML tags, keeps text."""
+    def __init__(self):
+        super().__init__()
+        self._parts: list[str] = []
+        self._skip = False
+
+    def handle_starttag(self, tag, _):
+        if tag in ("script", "style", "noscript"):
+            self._skip = True
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style", "noscript"):
+            self._skip = False
+
+    def handle_data(self, data):
+        if not self._skip:
+            self._parts.append(data)
+
+    def get_text(self) -> str:
+        return " ".join(self._parts)
+
+
+def _fetch_url_text(url: str) -> str | None:
+    """Fetch a URL and return its text content (HTML stripped)."""
+    try:
+        req = Request(url, headers={"User-Agent": "IdeaGraveyard/1.0"})
+        with urlopen(req, timeout=8) as resp:
+            ct = (resp.headers.get("Content-Type") or "").lower()
+            if "html" not in ct and "text" not in ct:
+                return None
+            raw = resp.read(200_000).decode("utf-8", errors="replace")
+        ex = _TextExtractor()
+        ex.feed(raw)
+        text = ex.get_text().strip()
+        text = re.sub(r'\s+', ' ', text)
+        return text[:_MAX_URL_CHARS] if text else None
+    except (URLError, OSError, ValueError):
+        return None
+
+
+def _extract_urls_as_context(seed: str) -> str:
+    """Find URLs in seed text, fetch them, return combined context."""
+    urls = _URL_RE.findall(seed)
+    if not urls:
+        return ""
+    parts: list[str] = []
+    for url in urls[:3]:
+        text = _fetch_url_text(url)
+        if text:
+            parts.append(f"[URL: {url}]\n{text}")
+    return "\n\n".join(parts)
+
+
 @app.route("/api/brainstorm", methods=["POST"])
 def api_brainstorm():
     try:
@@ -95,6 +157,10 @@ def api_brainstorm():
             return jsonify(error="seed required"), 400
 
         context, images = _process_attachments(request.files.getlist("attachments"))
+
+        url_context = _extract_urls_as_context(seed)
+        if url_context:
+            context = (url_context + "\n\n" + context).strip() if context else url_context
 
         if not seed:
             seed = "(see attached context)"

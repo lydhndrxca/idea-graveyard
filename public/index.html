@@ -14,100 +14,79 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body>
-    <div class="crt">
-        <div class="scanlines" aria-hidden="true"></div>
-        <div class="terminal" id="terminal">
+    <div class="terminal" id="terminal">
 
-            <div class="header-bar">
-                <span>THE IDEA GRAVEYARD</span>
-                <span class="header-bar-right">BRAINSTORM ENGINE v1.0</span>
-            </div>
+        <div class="header-bar">
+            <span class="header-title">The Idea Graveyard</span>
+            <span class="header-sub">v1.0</span>
+        </div>
 
-            <div class="terminal-body">
+        <div class="terminal-body">
 
-                <!-- INPUT VIEW -->
-                <section id="inputView" class="view view-active">
-                    <div class="prompt-line">
-                        <span class="prompt-glyph">&gt;</span> enter seed idea<span class="cursor">_</span>
-                    </div>
+            <!-- INPUT VIEW -->
+            <section id="inputView" class="view view-active">
 
-                    <div class="field">
-                        <textarea id="seedInput"
-                                  placeholder="What's the idea? Describe it. The more, the better — or just a fragment."
-                                  rows="5"
-                                  autocomplete="off"
-                                  autocapitalize="sentences"
-                                  spellcheck="true"></textarea>
-                    </div>
-
-                    <div class="row attach-row">
-                        <label class="btn btn-ghost" for="attachInput">
-                            [+] ATTACH
+                <div class="input-wrap">
+                    <textarea id="seedInput"
+                              placeholder="Describe your idea, paste a link, or just drop a fragment..."
+                              rows="5"
+                              autocomplete="off"
+                              autocapitalize="sentences"
+                              spellcheck="true"></textarea>
+                    <div class="input-toolbar">
+                        <label class="toolbar-btn" for="attachInput">
+                            <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6h-1.5v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6z"/></svg>
+                            Attach Files
                         </label>
                         <input type="file" id="attachInput" multiple
                                accept="image/*,.pdf,audio/*,.txt,.md,.csv,.json"
                                hidden>
-                        <button class="btn btn-ghost" id="voiceBtn" type="button" title="Hold to dictate">
-                            <span id="voiceGlyph">[MIC]</span> <span id="voiceLabel">VOICE</span>
+                        <button class="toolbar-btn" id="voiceBtn" type="button">
+                            <svg id="voiceIcon" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11z"/></svg>
+                            <span id="voiceLabel">Record</span>
                         </button>
-                    </div>
-
-                    <ul id="attachList" class="attach-list" aria-live="polite"></ul>
-
-                    <div class="row mode-row">
-                        <span class="mode-label">MODE:</span>
-                        <label class="mode-pill mode-pill-active">
-                            <input type="radio" name="mode" value="quick" checked>
-                            <span>QUICK</span>
-                            <small>~5s</small>
-                        </label>
-                        <label class="mode-pill">
-                            <input type="radio" name="mode" value="deep">
-                            <span>DEEP</span>
-                            <small>~30s</small>
-                        </label>
-                    </div>
-
-                    <div class="row">
-                        <button class="btn btn-primary" id="generateBtn" type="button">
-                            RUN BRAINSTORM
-                        </button>
-                    </div>
-
-                    <div id="errorBox" class="error-box hidden"></div>
-                </section>
-
-                <!-- LOADING VIEW -->
-                <section id="loadingView" class="view">
-                    <div class="loading-block">
-                        <div class="loading-header">
-                            <span class="loading-header-label">PROCESSING :: </span>
-                            <span class="loading-header-mode" id="loadingMode">QUICK</span>
+                        <div class="mode-toggle">
+                            <button class="mode-btn active" id="modeQuick" type="button">Quick</button>
+                            <button class="mode-btn" id="modeDeep" type="button">Deep</button>
                         </div>
-                        <div class="loading-steps" id="loadingSteps"></div>
-                        <div class="loading-bar-wrap">
-                            <div class="loading-bar">
-                                <div class="loading-bar-fill" id="loadingBarFill"></div>
-                            </div>
-                            <span class="loading-pct" id="loadingPct">0%</span>
+                    </div>
+                </div>
+
+                <ul id="attachList" class="attach-list" aria-live="polite"></ul>
+
+                <button class="run-btn" id="generateBtn" type="button">
+                    Run Brainstorm
+                </button>
+
+                <div id="errorBox" class="error-box hidden"></div>
+            </section>
+
+            <!-- LOADING VIEW -->
+            <section id="loadingView" class="view">
+                <div class="loading-block">
+                    <div class="loading-header">
+                        Processing &middot; <span class="loading-header-mode" id="loadingMode">Quick</span>
+                    </div>
+                    <div class="loading-steps" id="loadingSteps"></div>
+                    <div class="loading-bar-wrap">
+                        <div class="loading-bar">
+                            <div class="loading-bar-fill" id="loadingBarFill"></div>
                         </div>
-                        <div class="loading-signal" id="loadingSignal"></div>
+                        <span class="loading-pct" id="loadingPct">0%</span>
                     </div>
-                </section>
+                    <div class="loading-signal" id="loadingSignal"></div>
+                </div>
+            </section>
 
-                <!-- RESULTS VIEW -->
-                <section id="resultsView" class="view">
-                    <div class="results-toolbar">
-                        <button class="btn btn-ghost" id="backBtn" type="button">
-                            &lt; NEW IDEA
-                        </button>
-                        <span class="results-meta" id="resultsMeta"></span>
-                    </div>
+            <!-- RESULTS VIEW -->
+            <section id="resultsView" class="view">
+                <div class="results-toolbar">
+                    <button class="btn btn-ghost" id="backBtn" type="button">&larr; New Idea</button>
+                    <span class="results-meta" id="resultsMeta"></span>
+                </div>
+                <div id="resultsBody"></div>
+            </section>
 
-                    <div id="resultsBody"></div>
-                </section>
-
-            </div>
         </div>
     </div>
 

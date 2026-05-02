@@ -1,4 +1,4 @@
-/* The Idea Graveyard — frontend logic (vanilla JS, no build step) */
+/* The Idea Graveyard — frontend logic */
 (function () {
     'use strict';
 
@@ -46,10 +46,10 @@
         state.attachments.forEach((a, i) => {
             const li = document.createElement('li');
             li.innerHTML =
-                '<span class="attach-meta">[' + a.kind.toUpperCase() + ']</span>' +
+                '<span class="attach-meta">' + a.kind.toUpperCase() + '</span>' +
                 '<span class="attach-name"></span>' +
                 '<span class="attach-meta">' + fmtBytes(a.size) + '</span>' +
-                '<button class="attach-remove" type="button" aria-label="Remove">[X]</button>';
+                '<button class="attach-remove" type="button" aria-label="Remove">&times;</button>';
             li.querySelector('.attach-name').textContent = a.name;
             li.querySelector('.attach-remove').addEventListener('click', () => {
                 state.attachments.splice(i, 1);
@@ -78,7 +78,7 @@
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
             $('voiceBtn').addEventListener('click', () => {
-                showError('Voice input not supported on this browser. Try Chrome or Safari, or attach an audio file instead.');
+                showError('Voice not supported in this browser. Try Chrome or Safari.');
             });
             return;
         }
@@ -103,7 +103,7 @@
             console.warn('Speech error', e);
             stopRec();
             if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                showError('Microphone permission denied. Enable it in your browser settings.');
+                showError('Microphone permission denied.');
             }
         };
         rec.onend = () => {
@@ -120,18 +120,33 @@
             try { rec.start(); } catch (_) {}
             state.recording = true;
             $('voiceBtn').classList.add('recording');
-            $('voiceLabel').textContent = 'STOP';
-            $('voiceGlyph').textContent = '[REC]';
+            $('voiceLabel').textContent = 'Stop';
+            $('voiceIcon').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1"/>';
         }
         function stopRec() {
             state.recording = false;
             try { rec.stop(); } catch (_) {}
             $('voiceBtn').classList.remove('recording');
-            $('voiceLabel').textContent = 'VOICE';
-            $('voiceGlyph').textContent = '[MIC]';
+            $('voiceLabel').textContent = 'Record';
+            $('voiceIcon').innerHTML = '<path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11z"/>';
         }
         $('voiceBtn').addEventListener('click', () => {
             if (state.recording) stopRec(); else startRec();
+        });
+    }
+
+    // ---------- Mode toggle ----------
+
+    function setupMode() {
+        $('modeQuick').addEventListener('click', () => {
+            state.mode = 'quick';
+            $('modeQuick').classList.add('active');
+            $('modeDeep').classList.remove('active');
+        });
+        $('modeDeep').addEventListener('click', () => {
+            state.mode = 'deep';
+            $('modeDeep').classList.add('active');
+            $('modeQuick').classList.remove('active');
         });
     }
 
@@ -139,16 +154,15 @@
 
     function showError(msg) {
         const box = $('errorBox');
-        box.textContent = '! ERROR: ' + msg;
+        box.textContent = msg;
         box.classList.remove('hidden');
         setTimeout(() => { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 50);
     }
     function clearError() { $('errorBox').classList.add('hidden'); }
 
-    // ---------- Loading: step-by-step animation ----------
+    // ---------- Loading ----------
 
     let loadingTimer = null;
-    let waveTimer = null;
     const WAVE_CHARS = '\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588';
 
     function startLoading(mode) {
@@ -157,7 +171,7 @@
         const pctEl = $('loadingPct');
         const signalEl = $('loadingSignal');
 
-        $('loadingMode').textContent = mode === 'deep' ? 'DEEP' : 'QUICK';
+        $('loadingMode').textContent = mode === 'deep' ? 'Deep' : 'Quick';
         stepsEl.innerHTML = '';
         barFill.style.width = '0%';
         pctEl.textContent = '0%';
@@ -191,21 +205,20 @@
                 '<span class="step-status"></span>';
             stepsEl.appendChild(div);
             stepsEl.scrollTop = stepsEl.scrollHeight;
-            return div;
         }
 
         function completeStep(stepEl) {
             if (!stepEl) return;
             stepEl.querySelector('.step-dots').textContent = '';
             const st = stepEl.querySelector('.step-status');
-            st.textContent = ' [OK]';
+            st.textContent = ' [ok]';
             st.classList.add('ok');
             stepEl.classList.remove('active');
             stepEl.classList.add('done');
         }
 
         function buildWave() {
-            const width = Math.min(60, Math.floor((signalEl.offsetWidth || 400) / 9));
+            const width = Math.min(55, Math.floor((signalEl.offsetWidth || 400) / 9));
             let line1 = '', line2 = '';
             for (let i = 0; i < width; i++) {
                 const v1 = Math.sin((waveOffset + i) * 0.25) * 0.4 +
@@ -221,7 +234,7 @@
                 line2 += WAVE_CHARS[i2];
             }
             waveOffset++;
-            signalEl.textContent = 'SIG-A \u2502 ' + line1 + '\nSIG-B \u2502 ' + line2;
+            signalEl.textContent = line1 + '\n' + line2;
         }
 
         function tick() {
@@ -236,9 +249,7 @@
             const targetStep = expectedStep < 0 ? steps.length - 1 : expectedStep;
 
             while (currentStep < targetStep) {
-                if (currentStep >= 0) {
-                    completeStep(stepsEl.children[currentStep]);
-                }
+                if (currentStep >= 0) completeStep(stepsEl.children[currentStep]);
                 currentStep++;
                 addStep(steps[currentStep].text);
             }
@@ -258,9 +269,7 @@
 
     function finishLoading() {
         if (loadingTimer) clearInterval(loadingTimer);
-        if (waveTimer) clearInterval(waveTimer);
         loadingTimer = null;
-        waveTimer = null;
 
         $('loadingBarFill').style.width = '100%';
         $('loadingPct').textContent = '100%';
@@ -270,7 +279,7 @@
         if (last && !last.classList.contains('done')) {
             last.querySelector('.step-dots').textContent = '';
             const st = last.querySelector('.step-status');
-            st.textContent = ' [OK]';
+            st.textContent = ' [ok]';
             st.classList.add('ok');
             last.classList.remove('active');
             last.classList.add('done');
@@ -291,31 +300,27 @@
             showError('Enter an idea or attach a file first.');
             return;
         }
-        const mode = (document.querySelector('input[name="mode"]:checked') || {}).value || 'quick';
         state.seed = seed;
-        state.mode = mode;
 
-        startLoading(mode);
+        startLoading(state.mode);
 
         const fd = new FormData();
         fd.append('seed', seed);
-        fd.append('mode', mode);
+        fd.append('mode', state.mode);
         state.attachments.forEach((a) => fd.append('attachments', a.file, a.name));
 
         try {
             const r = await fetch('/api/brainstorm', { method: 'POST', body: fd });
             const data = await r.json().catch(() => ({}));
-            if (!r.ok || !data.ok) {
-                throw new Error(data.error || ('HTTP ' + r.status));
-            }
+            if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
             finishLoading();
             state.result = data;
-            await new Promise((res) => setTimeout(res, 600));
+            await new Promise((res) => setTimeout(res, 500));
             renderResults();
             showView('results');
         } catch (e) {
             finishLoading();
-            await new Promise((res) => setTimeout(res, 300));
+            await new Promise((res) => setTimeout(res, 250));
             showView('input');
             showError(String(e.message || e));
         }
@@ -330,7 +335,7 @@
         if (!r) return;
 
         $('resultsMeta').textContent =
-            (r.mode || state.mode).toUpperCase() + ' / ' + r.ideas.length + ' IDEAS';
+            (r.mode || state.mode).toUpperCase() + ' \u00b7 ' + r.ideas.length + ' ideas';
 
         const winnerIdx = r.ideas.findIndex((x) => x.id === r.winner_id);
         const ordered = [];
@@ -351,7 +356,7 @@
         const head = document.createElement('div');
         head.className = 'idea-card-head';
         head.innerHTML =
-            '<div class="idea-rank">' + (isWinner ? '#1 \u2605' : '#' + displayRank) + '</div>' +
+            '<div class="idea-rank">' + (isWinner ? '#1' : '#' + displayRank) + '</div>' +
             '<div class="idea-head-text">' +
                 '<h2 class="idea-title"></h2>' +
                 '<p class="idea-tldr"></p>' +
@@ -368,7 +373,7 @@
         if (isWinner && rationale) {
             const rat = document.createElement('div');
             rat.className = 'idea-rationale';
-            rat.textContent = '\u2605 Why this wins: ' + rationale;
+            rat.textContent = 'Why this wins: ' + rationale;
             body.appendChild(rat);
         }
 
@@ -380,21 +385,21 @@
         const actions = document.createElement('div');
         actions.className = 'idea-actions';
         actions.innerHTML =
-            '<button class="btn btn-ghost btn-enhance" data-act="enhance">[+] ENHANCE</button>' +
-            '<button class="btn btn-ghost" data-act="feedback">[~] FEEDBACK</button>' +
-            '<button class="btn btn-ghost" data-act="png">SAVE PNG</button>' +
-            '<button class="btn btn-ghost" data-act="pdf">SAVE PDF</button>' +
-            '<button class="btn btn-ghost" data-act="share">SHARE</button>';
+            '<button class="btn btn-ghost btn-enhance" data-act="enhance">Enhance</button>' +
+            '<button class="btn btn-ghost" data-act="feedback">Feedback</button>' +
+            '<button class="btn btn-ghost" data-act="png">PNG</button>' +
+            '<button class="btn btn-ghost" data-act="pdf">PDF</button>' +
+            '<button class="btn btn-ghost" data-act="share">Share</button>';
         body.appendChild(actions);
 
         const fb = document.createElement('div');
         fb.className = 'idea-feedback';
         fb.innerHTML =
-            '<textarea placeholder="What would you change? More edge, different audience, new constraint..." rows="3"></textarea>' +
+            '<textarea placeholder="What would you change?..." rows="3"></textarea>' +
             '<div class="feedback-actions">' +
-              '<button class="btn btn-primary" data-act="refine-one">REFINE THIS ONE</button>' +
-              '<button class="btn" data-act="rebrainstorm">BRAINSTORM AGAIN</button>' +
-              '<button class="btn btn-ghost" data-act="cancel-feedback">CANCEL</button>' +
+              '<button class="btn btn-primary" data-act="refine-one">Refine This One</button>' +
+              '<button class="btn" data-act="rebrainstorm">Brainstorm Again</button>' +
+              '<button class="btn btn-ghost" data-act="cancel-feedback">Cancel</button>' +
             '</div>' +
             '<div class="idea-status"></div>';
         body.appendChild(fb);
@@ -418,7 +423,6 @@
             const act = btn.dataset.act;
             const status = fb.querySelector('.idea-status');
             const fbText = fb.querySelector('textarea').value.trim();
-
             if (act === 'cancel-feedback') {
                 fb.classList.remove('open');
                 fb.querySelector('textarea').value = '';
@@ -426,11 +430,7 @@
                 status.classList.remove('error');
                 return;
             }
-            if (!fbText) {
-                status.textContent = 'enter feedback first.';
-                status.classList.add('error');
-                return;
-            }
+            if (!fbText) { status.textContent = 'enter feedback first'; status.classList.add('error'); return; }
             if (act === 'refine-one') refineSingleIdea(card, idea, fbText, status);
             else if (act === 'rebrainstorm') rebrainstormWithFeedback(idea, fbText, status);
         });
@@ -438,26 +438,22 @@
         return card;
     }
 
-    // ---------- Enhance Idea (one-click) ----------
+    // ---------- Enhance ----------
 
     async function enhanceIdea(card, idea, btn) {
         const origText = btn.innerHTML;
-        btn.innerHTML = 'ENHANCING...';
+        btn.textContent = 'Enhancing\u2026';
         btn.disabled = true;
-        btn.style.opacity = '0.6';
+        btn.style.opacity = '0.5';
 
         const feedback =
-            'Enhance this idea. Make the hook sharper and more memorable. ' +
-            'Add a specific, concrete first step someone could take today. ' +
-            'Make it more original — push it further from obvious. ' +
-            'Be more honest and specific about the biggest risk. ' +
-            'Keep the core direction but elevate it.';
+            'Enhance this idea. Sharper hook, concrete first step, push further from obvious, honest risks.';
 
         try {
             const r = await fetch('/api/refine', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idea: idea, feedback: feedback, seed: state.seed }),
+                body: JSON.stringify({ idea, feedback, seed: state.seed }),
             });
             const data = await r.json();
             if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
@@ -477,30 +473,26 @@
                 badge.textContent = 'ENHANCED';
                 titleEl.appendChild(badge);
             }
-
             card.replaceWith(fresh);
         } catch (e) {
             btn.innerHTML = origText;
             btn.disabled = false;
             btn.style.opacity = '';
             const status = card.querySelector('.idea-status');
-            if (status) {
-                status.classList.add('error');
-                status.textContent = '! ' + (e.message || e);
-            }
+            if (status) { status.classList.add('error'); status.textContent = e.message || e; }
         }
     }
 
-    // ---------- Refine + re-brainstorm ----------
+    // ---------- Refine ----------
 
     async function refineSingleIdea(card, idea, feedback, statusEl) {
         statusEl.classList.remove('error');
-        statusEl.textContent = 'refining...';
+        statusEl.textContent = 'refining\u2026';
         try {
             const r = await fetch('/api/refine', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idea: idea, feedback: feedback, seed: state.seed }),
+                body: JSON.stringify({ idea, feedback, seed: state.seed }),
             });
             const data = await r.json();
             if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
@@ -513,18 +505,18 @@
             card.replaceWith(fresh);
         } catch (e) {
             statusEl.classList.add('error');
-            statusEl.textContent = '! ' + (e.message || e);
+            statusEl.textContent = e.message || e;
         }
     }
 
     async function rebrainstormWithFeedback(idea, feedback, statusEl) {
         statusEl.classList.remove('error');
-        statusEl.textContent = 'rebooting brainstorm...';
+        statusEl.textContent = 'rebooting\u2026';
         const newSeed =
             state.seed +
             '\n\n--- PRIOR DIRECTION ---\n' +
             (idea.title || '') + ' \u2014 ' + (idea.tldr || '') +
-            '\n\n--- USER FEEDBACK ON THAT ---\n' + feedback +
+            '\n\n--- FEEDBACK ---\n' + feedback +
             '\n\nIncorporate this feedback into a fresh brainstorm.';
         $('seedInput').value = newSeed;
         await runBrainstorm();
@@ -537,137 +529,63 @@
         card.classList.add('expanded');
         const actions = card.querySelector('.idea-actions');
         const fb = card.querySelector('.idea-feedback');
-        const oldDisplay = actions ? actions.style.display : '';
-        const oldFbDisplay = fb ? fb.style.display : '';
         if (actions) actions.style.display = 'none';
         if (fb) fb.style.display = 'none';
-        try {
-            return await fn();
-        } finally {
-            if (actions) actions.style.display = oldDisplay;
-            if (fb) fb.style.display = oldFbDisplay;
+        try { return await fn(); }
+        finally {
+            if (actions) actions.style.display = '';
+            if (fb) fb.style.display = '';
             if (!wasExpanded) card.classList.remove('expanded');
         }
     }
 
     async function saveAsPng(card, idea) {
-        if (typeof html2canvas === 'undefined') {
-            alert('PNG export not loaded yet, try again in a moment.');
-            return;
-        }
+        if (typeof html2canvas === 'undefined') { alert('Not loaded yet.'); return; }
         await withTempExpanded(card, async () => {
-            const canvas = await html2canvas(card, {
-                backgroundColor: '#111d35',
-                scale: 2,
-                useCORS: true,
-            });
-            const url = canvas.toDataURL('image/png');
-            triggerDownload(url, slugify(idea.title) + '.png');
+            const canvas = await html2canvas(card, { backgroundColor: '#111d35', scale: 2, useCORS: true });
+            triggerDownload(canvas.toDataURL('image/png'), slugify(idea.title) + '.png');
         });
     }
 
     async function saveAsPdf(card, idea) {
-        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
-            alert('PDF export not loaded yet, try again in a moment.');
-            return;
-        }
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert('Not loaded yet.'); return; }
         await withTempExpanded(card, async () => {
             const canvas = await html2canvas(card, { backgroundColor: '#111d35', scale: 2, useCORS: true });
-            const img = canvas.toDataURL('image/png');
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'letter' });
-            const pageW = pdf.internal.pageSize.getWidth();
-            const pageH = pdf.internal.pageSize.getHeight();
-            const imgW = pageW - 40;
-            const imgH = (canvas.height * imgW) / canvas.width;
-            let y = 20;
-            if (imgH <= pageH - 40) {
-                pdf.addImage(img, 'PNG', 20, y, imgW, imgH);
-            } else {
-                let remainingH = imgH;
-                let sy = 0;
-                const sliceH = pageH - 40;
-                while (remainingH > 0) {
-                    const slice = document.createElement('canvas');
-                    const sliceCanvasH = Math.min(sliceH * (canvas.width / imgW), canvas.height - sy);
-                    slice.width = canvas.width;
-                    slice.height = sliceCanvasH;
-                    slice.getContext('2d').drawImage(
-                        canvas, 0, sy, canvas.width, sliceCanvasH,
-                        0, 0, canvas.width, sliceCanvasH
-                    );
-                    const sImg = slice.toDataURL('image/png');
-                    const sH = (sliceCanvasH * imgW) / canvas.width;
-                    pdf.addImage(sImg, 'PNG', 20, 20, imgW, sH);
-                    sy += sliceCanvasH;
-                    remainingH -= sH;
-                    if (remainingH > 0) pdf.addPage();
-                }
-            }
+            const w = pdf.internal.pageSize.getWidth() - 40;
+            const h = (canvas.height * w) / canvas.width;
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 20, 20, w, Math.min(h, pdf.internal.pageSize.getHeight() - 40));
             pdf.save(slugify(idea.title) + '.pdf');
         });
     }
 
     async function shareIdea(idea) {
-        const text =
-            'THE IDEA GRAVEYARD \u2014 ' + (idea.title || '') + '\n\n' +
-            (idea.tldr || '') + '\n\n' + (idea.full || '');
-        if (navigator.share) {
-            try {
-                await navigator.share({ title: idea.title || 'The Idea Graveyard', text: text });
-                return;
-            } catch (_) { /* user canceled */ }
-        }
-        try {
-            await navigator.clipboard.writeText(text);
-            alert('Copied to clipboard.');
-        } catch (_) {
-            alert('Copy failed. Long-press the text to copy manually.');
-        }
+        const text = (idea.title || '') + '\n\n' + (idea.tldr || '') + '\n\n' + (idea.full || '');
+        if (navigator.share) { try { await navigator.share({ title: idea.title, text }); return; } catch (_) {} }
+        try { await navigator.clipboard.writeText(text); alert('Copied.'); } catch (_) { alert('Copy failed.'); }
     }
 
     function slugify(s) {
-        return (s || 'idea')
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '')
-            .slice(0, 60) || 'idea';
+        return (s || 'idea').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'idea';
     }
 
     function triggerDownload(href, filename) {
         const a = document.createElement('a');
-        a.href = href;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href = href; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 
     // ---------- Wire up ----------
 
     document.addEventListener('DOMContentLoaded', () => {
-        $('attachInput').addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-            e.target.value = '';
-        });
+        $('attachInput').addEventListener('change', (e) => { handleFiles(e.target.files); e.target.value = ''; });
         $('generateBtn').addEventListener('click', runBrainstorm);
-        $('backBtn').addEventListener('click', () => {
-            showView('input');
-            clearError();
-        });
-        document.querySelectorAll('input[name="mode"]').forEach((el) => {
-            el.addEventListener('change', () => {
-                document.querySelectorAll('.mode-pill').forEach((p) => {
-                    p.classList.toggle('mode-pill-active', p.querySelector('input').checked);
-                });
-            });
-        });
+        $('backBtn').addEventListener('click', () => { showView('input'); clearError(); });
         $('seedInput').addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                runBrainstorm();
-            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runBrainstorm(); }
         });
+        setupMode();
         setupVoice();
     });
 })();
