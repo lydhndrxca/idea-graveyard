@@ -89,14 +89,15 @@
         let baseText = '';
         rec.onresult = (e) => {
             let interim = '';
-            let final = '';
             for (let i = e.resultIndex; i < e.results.length; i++) {
                 const t = e.results[i][0].transcript;
-                if (e.results[i].isFinal) final += t;
-                else interim += t;
+                if (e.results[i].isFinal) {
+                    baseText = (baseText + ' ' + t).trim();
+                } else {
+                    interim += t;
+                }
             }
-            const merged = (baseText + (final ? ' ' + final : '') + (interim ? ' ' + interim : '')).trim();
-            $('seedInput').value = merged;
+            $('seedInput').value = (baseText + (interim ? ' ' + interim : '')).trim();
         };
         rec.onerror = (e) => {
             console.warn('Speech error', e);
