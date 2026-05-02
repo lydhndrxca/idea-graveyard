@@ -30,21 +30,6 @@ def healthz():
     return jsonify(ok=True, key_set=bool(os.environ.get("OPENAI_API_KEY")))
 
 
-# ---------- Static frontend ----------
-
-@app.route("/")
-def index():
-    return send_from_directory(PUBLIC_DIR, "index.html")
-
-
-@app.route("/<path:filename>")
-def static_files(filename):
-    target = os.path.join(PUBLIC_DIR, filename)
-    if os.path.isfile(target):
-        return send_from_directory(PUBLIC_DIR, filename)
-    return send_from_directory(PUBLIC_DIR, "index.html")
-
-
 # ---------- API ----------
 
 _IMAGE_MIMES = {"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"}
@@ -156,6 +141,21 @@ def api_transcribe():
     except Exception as e:
         traceback.print_exc()
         return jsonify(ok=False, error=f"{type(e).__name__}: {e}"), 500
+
+
+# ---------- Static frontend (catch-all MUST be last) ----------
+
+@app.route("/")
+def index():
+    return send_from_directory(PUBLIC_DIR, "index.html")
+
+
+@app.route("/<path:filename>")
+def static_files(filename):
+    target = os.path.join(PUBLIC_DIR, filename)
+    if os.path.isfile(target):
+        return send_from_directory(PUBLIC_DIR, filename)
+    return send_from_directory(PUBLIC_DIR, "index.html")
 
 
 if __name__ == "__main__":
