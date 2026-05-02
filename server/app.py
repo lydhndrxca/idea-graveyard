@@ -23,6 +23,13 @@ MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
 
 
+# ---------- Health check ----------
+
+@app.route("/healthz")
+def healthz():
+    return jsonify(ok=True, key_set=bool(os.environ.get("OPENAI_API_KEY")))
+
+
 # ---------- Static frontend ----------
 
 @app.route("/")
@@ -36,11 +43,6 @@ def static_files(filename):
     if os.path.isfile(target):
         return send_from_directory(PUBLIC_DIR, filename)
     return send_from_directory(PUBLIC_DIR, "index.html")
-
-
-@app.route("/healthz")
-def healthz():
-    return jsonify(ok=True, key_set=bool(os.environ.get("OPENAI_API_KEY")))
 
 
 # ---------- API ----------
